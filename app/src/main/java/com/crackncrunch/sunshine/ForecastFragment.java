@@ -1,10 +1,15 @@
 package com.crackncrunch.sunshine;
 
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
@@ -26,6 +31,12 @@ public class ForecastFragment extends Fragment {
     private ListView mListView;
 
     public ForecastFragment() {
+    }
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setHasOptionsMenu(true);
     }
 
     @Override
@@ -52,17 +63,31 @@ public class ForecastFragment extends Fragment {
         mListView = (ListView) rootView.findViewById(R.id.listview_forecast);
         mListView.setAdapter(mForecastAdapter);
 
-
-        FetchWeatherTask task = new FetchWeatherTask();
-        //task.execute();
-
         return rootView;
     }
 
-    public class FetchWeatherTask extends AsyncTask<Void, Void, Void> {
+    @Override
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+        inflater.inflate(R.menu.foreacast_fragment, menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.action_refresh:
+                FetchWeatherTask task = new FetchWeatherTask();
+                task.execute("Dubai");
+                return true;
+            default:
+                break;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    public class FetchWeatherTask extends AsyncTask<String, Void, Void> {
 
         @Override
-        protected Void doInBackground(Void... params) {
+        protected Void doInBackground(String... params) {
             // These two need to be declared outside the try/catch
             // so that they can be closed in the finally block.
             HttpURLConnection urlConnection = null;
@@ -71,8 +96,29 @@ public class ForecastFragment extends Fragment {
             // Will contain the raw JSON response as a string.
             String forecastJsonStr = null;
 
+            String mode = "json";
+            String units = "metric";
+            int numDays = 7;
+            String appId = "14a7eb81849fdad5ffea10e430d5eac4";
+
             try {
-                URL url = new URL("http://api.openweathermap.org/data/2.5/forecast?q=dubai&mode=json&units=metric&cnt=7&appid=14a7eb81849fdad5ffea10e430d5eac4");
+                final String FORECAST_BASE_URL = "http://api.openweathermap.org/data/2.5/forecast?";
+                final String QUERY_PARAM = "q";
+                final String MODE_PARAM = "mode";
+                final String UNITS_PARAM = "units";
+                final String DAYS_PARAM = "cnt";
+                final String APPID_PARAM = "appid";
+
+                Uri buildUri = Uri.parse(FORECAST_BASE_URL).buildUpon()
+                        .appendQueryParameter(QUERY_PARAM, params[0])
+                        .appendQueryParameter(MODE_PARAM, mode)
+                        .appendQueryParameter(UNITS_PARAM, units)
+                        .appendQueryParameter(DAYS_PARAM, Integer.toString(numDays))
+                        .appendQueryParameter(APPID_PARAM, appId)
+                        .build();
+//                URL url = new URL("http://api.openweathermap.org/data/2.5/forecast?q=dubai&mode=json&units=metric&cnt=7&appid=14a7eb81849fdad5ffea10e430d5eac4");
+
+                URL url = new URL(buildUri.toString());
 
                 urlConnection = (HttpURLConnection) url.openConnection();
                 urlConnection.setRequestMethod("GET");
@@ -99,6 +145,7 @@ public class ForecastFragment extends Fragment {
                     return null;
                 }
                 forecastJsonStr = buffer.toString();
+                Log.v("mmmmmm", "Forecast JSON String: " + forecastJsonStr);
             } catch (IOException e) {
                 Log.e("PlaceholderFragment", "Error ", e);
                 return null;
